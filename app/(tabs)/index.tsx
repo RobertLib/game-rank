@@ -1,70 +1,108 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import {
+  ActivityIndicator,
+  ColorSchemeName,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+  useColorScheme,
+} from "react-native";
+import { Colors } from "@/constants/Colors";
+import { Ionicons } from "@expo/vector-icons";
+import { Link, useNavigation } from "expo-router";
+import { ThemedText } from "@/components/ThemedText";
+import { useCallback, useEffect, useMemo } from "react";
+import GameItem from "@/components/games/GameItem";
+import useFetchGames from "@/hooks/useFetchGames";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+export default function Index() {
+  const navigation = useNavigation();
 
-export default function HomeScreen() {
+  const colorScheme = useColorScheme();
+  const styles = useMemo(() => createStyles(colorScheme), [colorScheme]);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Link asChild href="/game-filter">
+          <TouchableOpacity>
+            <Ionicons
+              name="options"
+              size={24}
+              style={{ color: Colors.light.tint, marginRight: 10, padding: 5 }}
+            />
+          </TouchableOpacity>
+        </Link>
+      ),
+    });
+  }, [navigation]);
+
+  const { error, fetchGames, games, loading } = useFetchGames();
+
+  const handleRefresh = useCallback(() => {
+    fetchGames();
+  }, [fetchGames]);
+
+  const renderItem = useCallback(
+    ({ item }: { item: any }) => <GameItem game={item} />,
+    []
+  );
+
+  if (loading && games.length === 0) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (games.length === 0) {
+    return (
+      <View style={styles.container}>
+        <ThemedText type="subtitle">No games found</ThemedText>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <ThemedText type="subtitle">Something went wrong</ThemedText>
+        <ThemedText type="subtitle">Please try again later</ThemedText>
+      </View>
+    );
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({ ios: 'cmd + d', android: 'cmd + m' })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <View style={styles.listContainer}>
+      <FlatList
+        data={games}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        keyExtractor={(item) => item.id}
+        refreshControl={
+          <RefreshControl onRefresh={handleRefresh} refreshing={loading} />
+        }
+        renderItem={renderItem}
+      />
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+const createStyles = (colorScheme: ColorSchemeName) =>
+  StyleSheet.create({
+    container: {
+      alignItems: "center",
+      flex: 1,
+      gap: 5,
+      justifyContent: "center",
+      padding: 15,
+    },
+    listContainer: {
+      flex: 1,
+    },
+    separator: {
+      backgroundColor: colorScheme === "light" ? "#dedede" : "#323232",
+      height: 1,
+    },
+  });
